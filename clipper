@@ -6,4 +6,21 @@ if ('cli' !== php_sapi_name()) {
     exit;
 }
 
-echo "Hello World\n";
+require __DIR__ . '/vendor/autoload.php';
+
+use Clipper\Console;
+
+$console = new Console();
+$console->registerCommand('hello', function (array $argv) use ($console) {
+    $name = $argv[2] ?? "World";
+    Console::print("Hello $name!!!");
+});
+
+$console->registerCommand('help', function (array $argv) use ($console) {
+    Console::print("usage: clipper hello [ your-name ]");
+});
+
+$console->runCommand($argv);
+// Console::print('hello', 'world');
+
+// echo "hell", "tut";
