@@ -21,6 +21,3 @@ $console->registerCommand('help', function (array $argv) use ($console) {
 });
 
 $console->runCommand($argv);
-// Console::print('hello', 'world');
-
-// echo "hell", "tut";
