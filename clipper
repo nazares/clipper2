@@ -11,10 +11,8 @@ require __DIR__ . '/vendor/autoload.php';
 use Clipper\Console;
 
 $console = new Console();
-$console->registerCommand('hello', function (array $argv) use ($console) {
-    $name = $argv[2] ?? "World";
-    Console::print("Hello $name!!!");
-});
+
+$console->registerController('hello', new \Console\Command\HelloController($console));
 
 $console->registerCommand('help', function (array $argv) use ($console) {
     Console::print("usage: clipper hello [ your-name ]");
