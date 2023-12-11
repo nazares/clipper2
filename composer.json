@@ -1,4 +1,5 @@
 {
+    "name": "nazares/clipper",
     "autoload": {
         "psr-4": {
             "Clipper\\": "lib/",
