@@ -6,34 +6,84 @@ namespace Clipper;
 
 class Console
 {
+    /** @var CliPrinter */
     public static CliPrinter $printer;
 
+    /** @var CommandRegistry */
     protected CommandRegistry $commandRegistry;
 
+    /** @var string */
+    protected string $appSignature;
 
+    /**
+     * Console constructor
+     *
+     * @return void
+     */
     public function __construct()
     {
         self::$printer = new CliPrinter();
-        $this->commandRegistry = new CommandRegistry();
+        $this->commandRegistry = new CommandRegistry(basename(__DIR__) . '/console/Command');
     }
 
-    public function registerController(string $name, CommandController $controller)
+    /**
+     * @param string $appSignature
+     * @return void
+     */
+    public function setSignature(string $appSignature): void
     {
-        $this->commandRegistry->registerController($name, $controller);
+        $this->appSignature = $appSignature;
     }
 
+    /** @return string */
+    public function getSignature(): string
+    {
+        return $this->appSignature;
+    }
+
+    public function printSignature(): void
+    {
+        Console::print(sprintf("usage: %s", $this->getSignature()));
+    }
+
+    /**
+     * @param string $name
+     * @param callable $callback
+     * @return void
+     */
     public function registerCommand(string $name, callable $callback): void
     {
         $this->commandRegistry->registerCommand($name, $callback);
     }
 
-    public function runCommand(array $argv = [], $defaultCommand = 'help'): void
+    /** @param array $argv */
+    public function runCommand(array $argv = []): void
     {
-        $commandName = $argv[1] ?? $defaultCommand;
+        $input = new CommandCall($argv);
+        if (count($input->args) < 2) {
+            $this->printSignature();
+            exit;
+        }
+        $controller = $this->commandRegistry->getCallableController($input->command, $input->subcommand);
+
+        if ($controller instanceof CommandController) {
+            $controller->boot($this);
+            $controller->run($input);
+            $controller->teardown();
+            exit;
+        }
+        $this->runSingle($input);
+    }
+
+    protected function runSingle(CommandCall $input)
+    {
         try {
-            call_user_func($this->commandRegistry->getCallback($commandName), $argv);
+            $callback = $this->commandRegistry->getCallback($input->command);
+            call_user_func($callback, $input);
         } catch (\Exception $e) {
-            Console::print("ERROR: " . $e->getMessage());
+            Console::print(sprintf("ERROR: %s", $e->getMessage()));
+            $this->printSignature();
+            exit;
         }
     }
 

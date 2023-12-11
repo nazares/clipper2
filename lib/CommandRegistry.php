@@ -4,43 +4,109 @@ namespace Clipper;
 
 class CommandRegistry
 {
-    protected array $registry = [];
+    /** @var string */
+    protected string $commandsPath;
 
-    protected array $controllers = [];
+    /** @var array */
+    protected array $namespaces = [];
 
-    public function registerController(string $commandName, CommandController $controller): void
+    /** @var array */
+    protected array $defaultRegistry = [];
+
+    /**
+     * CommandRegistry constructor.
+     * @param string $commandsPath
+     * @return void
+     */
+    public function __construct(string $commandsPath)
     {
-        $this->controllers = [$commandName => $controller];
+        $this->commandsPath = $commandsPath;
+        $this->autoloadNamespaces();
     }
 
+    /** @return void */
+    public function autoloadNamespaces(): void
+    {
+        foreach (glob(sprintf("%s/*", $this->getCommandsPath()), GLOB_ONLYDIR) as $namespacePath) {
+            $this->registerNamespace(basename($namespacePath));
+        }
+    }
+
+    /**
+     * @param string $commandNamespace
+     * @return void
+     */
+    public function registerNamespace(string $commandNamespace): void
+    {
+        $namespace = new CommandNamespace($commandNamespace);
+        $namespace->loadControllers($this->getCommandsPath());
+        $this->namespaces[strtolower($commandNamespace)] = $namespace;
+    }
+
+    /**
+     * @param string $command
+     * @return CommandNamespace|null
+     */
+    public function getNamespace(string $command): ?CommandNamespace
+    {
+        return $this->namespaces[$command] ?? null;
+    }
+
+    /** @return  string*/
+    public function getCommandsPath(): string
+    {
+        return $this->commandsPath;
+    }
+
+    /**
+     * Registers an anonymous function as single command
+     *
+     * @param string $name
+     * @param callable $callback
+     * @return void
+     */
     public function registerCommand(string $name, callable $callback)
     {
-        $this->registry[$name] = $callback;
+        $this->defaultRegistry[$name] = $callback;
     }
 
-    public function getController(string $command): ?CommandController
-    {
-        return $this->controllers[$command] ?? null;
-    }
-
+    /**
+     * @param string $command
+     * @return callable|null
+     */
     public function getCommand(string $command): ?callable
     {
-        return $this->registry[$command] ?? null;
+        return $this->defaultRegistry[$command] ?? null;
     }
 
-    public function getCallback(string $commandName)
+    /**
+     * @param string $command
+     * @param string|null $subcommand
+     * @return CommandController|null
+     */
+    public function getCallableController(string $command, ?string $subcommand = null): ?CommandController
     {
-        $controller = $this->getController($commandName);
-
-        if ($controller instanceof CommandController) {
-            return [$controller, 'run'];
+        $namespace = $this->getNamespace($command);
+        if (null !== $namespace) {
+            return $namespace->getController($subcommand);
         }
 
-        $command = $this->getCommand($commandName);
+        return null;
+    }
 
-        if (null === $command) {
-            throw new \Exception("Command \"$commandName\" not found.");
+    /**
+     * Undocumented function
+     *
+     * @param string $command
+     * @return callable
+     * @throws Exception
+     */
+    public function getCallback(string $command): callable
+    {
+        $singleCommand = $this->getCommand($command);
+        if (null === $singleCommand) {
+            throw new \Exception(sprintf("Command \"$command\" not found.", $command));
         }
-        return $command;
+        return $singleCommand;
     }
 }

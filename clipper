@@ -8,14 +8,15 @@ if ('cli' !== php_sapi_name()) {
 
 require __DIR__ . '/vendor/autoload.php';
 
+use Clipper\CommandCall;
 use Clipper\Console;
 
 $console = new Console();
+$console->setSignature("clipper hello name [ user=name ]");
 
-$console->registerController('hello', new \Console\Command\HelloController($console));
-
-$console->registerCommand('help', function (array $argv) use ($console) {
-    Console::print("usage: clipper hello [ your-name ]");
+$console->registerCommand('hello', function (CommandCall $call) use ($console) {
+    $console->printSignature();
+    var_dump($call->params);
 });
 
 $console->runCommand($argv);
